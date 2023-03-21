@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import streamlit.components.v1 as components
 
 # Create a dictionary of usernames and passwords
 users = {
@@ -23,14 +24,15 @@ def generate_dataframe(username):
     return df
 
 # Define a function to set the color of a cell based on its value
-def set_color(value):
+def set_color(params):
+    value = params["value"]
     if value < 300:
         color = "green"
     elif value < 700:
         color = "yellow"
     else:
         color = "red"
-    return f"background-color: {color}"
+    return {"backgroundColor": color}
 
 # Define the main function that displays the login page and the editable dataframe
 def main():
@@ -45,8 +47,23 @@ def main():
             df = generate_dataframe(username)
             # Display the editable dataframe with colored cells
             st.title("Editable DataFrame")
-            st.write("Click on a cell to edit it.")
-            st.dataframe(df.style.applymap(set_color))
+            grid_component = components.declare_component(
+                "grid", url="https://cdn.ag-grid.com/ag-grid-enterprise.min.js"
+            )
+            grid_data = df.to_dict('records')
+            column_defs = [{"field": column, "editable": True, "valueSetter": "(params) => {return params.newValue > 0 && params.newValue <= 1000 ? true : false}"} for column in df.columns]
+            grid_options = {
+                "rowData": grid_data,
+                "columnDefs": column_defs,
+                "onCellValueChanged": "function(params){window.agGridComponent.postMessage(params.data);}",
+                "rowSelection": "single",
+                "enableRangeSelection": True,
+                "enableCellChangeFlash": True,
+                "getRowStyle": set_color
+            }
+            with st.spinner("Loading Grid..."):
+                grid_response = grid_component(grid_options)
+            st.markdown(grid_response["result"], unsafe_allow_html=True)
         else:
             st.error("Invalid username or password.")
     # Display an error message if an inputted value is greater than 1000

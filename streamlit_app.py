@@ -47,7 +47,7 @@ def main():
             # Display the editable dataframe with colored cells
             st.title("Editable DataFrame")
             grid_response = components.declare_component(
-            "agGrid", src="https://unpkg.com/ag-grid-community@27.0.0/dist/ag-grid-community.min.js"
+            "agGrid", url="https://unpkg.com/ag-grid-community@27.0.0/dist/ag-grid-community.min.js"
             )
             data = df.to_dict('records')
             columns = [{'field': col, 'editable': True} for col in df.columns]

@@ -33,7 +33,7 @@ def set_color(value):
         color = "red"
     return f"background-color: {color}"
 
-# Define the main function that displays the login page and the editable dataframe
+# Define the main function that displays the login page and the editable dataframe using ag-grid
 def main():
     # Display the login page
     st.title("Login")
@@ -44,38 +44,40 @@ def main():
             st.success("Login successful!")
             # Generate the dataframe for the user
             df = generate_dataframe(username)
-            # Create the Ag-Grid
-            ag_grid = components.declare_component(
-                "ag_grid",
-                url="https://cdn.jsdelivr.net/npm/@ag-grid-community/all-modules@27.0.1/dist/ag-grid-community.min.js",
-                js_module=True,
-            )
-            # Define the Ag-Grid options
+            # Display the editable dataframe with colored cells using ag-grid
+            st.title("Editable DataFrame")
             grid_options = {
-                "columnDefs": [{"field": col} for col in df.columns],
-                "rowData": df.to_dict("records"),
-                "onCellValueChanged": "function(params) {set_edit_key(params.rowIndex, params.colDef.field, params.oldValue, params.newValue)}",
-                "components": {
-                    "numericCellEditor": {
-                        "params": {
-                            "valueParser": "Number(newValue)",
-                            "onKeyDown": "function(event) {if (event.key === 'Enter' && event.target.value > 1000) {set_error_message('Value must be less than or equal to 1000.'); event.preventDefault();}}"
-                        }
-                    }
-                }
+                'editable': True,
+                'enableRangeSelection': True,
+                'enableCellChangeFlash': True,
             }
-            # Define the Ag-Grid callback functions
-            grid_callback = """
-                function set_edit_key(row, col, old_value, new_value) {
-                    streamlitSession.setSessionState({'edit_key': [row, col], 'old_value': old_value, 'new_value': new_value})
-                }
-                function set_error_message(message) {
-                    streamlitSession.setSessionState({'error_message': message})
-                }
+            components.iframe(
+                f"https://cdn.jsdelivr.net/npm/ag-grid-community@25.2.0/dist/ag-grid-community.min.noStyle.js",
+                height=0,
+                width=0,
+            )
+            js = f"""
+            const gridOptions = {grid_options};
+            const data = {df.to_json(orient='records')};
+            new agGrid.Grid(document.querySelector('#myGrid'), gridOptions);
+            const updateData = (data) => {{
+                gridOptions.api.setRowData(data);
+            }};
+            updateData(data);
             """
-            # Display the Ag-Grid
-            with st.spinner("Loading Ag-Grid..."):
-                ag_grid(grid_options=grid_options, callback=grid_callback, key="ag-grid")
-            # Display an error message if an inputted value is greater than 1000
-               
-main()
+            components.html(f"""<div id="myGrid" style="height: 400px;width:100%;" class="ag-theme-balham"></div>""", 
+                            height=500, 
+                            scrolling=False)
+            components.html(f"""<script>{js}</script>""")
+        else:
+            st.error("Invalid username or password.")
+    # Display an error message if an inputted value is greater than 1000
+    if "dataframe" in st.session_state:
+        df = st.session_state.dataframe
+        if st.session_state.edit_key and st.session_state.new_value > 1000:
+            row, col = st.session_state.edit_key
+            df.iloc[row, col] = st.session_state.old_value
+            st.error("Value must be less than or equal to 1000.")
+
+if __name__ == "__main__":
+    main()

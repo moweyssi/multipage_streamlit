@@ -42,7 +42,7 @@ def main():
             # Display the editable dataframe with cell color based on the value
             st.title("Editable DataFrame")
             st.write("Click on a cell to edit it.")
-            st.dataframe(df.style.applymap(color_negative_red), editable=True)
+            st.experimental_data_editor(df.style.applymap(color_negative_red))
         else:
             st.error("Invalid username or password.")
 

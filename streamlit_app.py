@@ -15,6 +15,23 @@ def authenticate(username, password):
     else:
         return False
 
+# Define a function to generate the dataframe for a given user
+def generate_dataframe(username):
+    np.random.seed(ord(username[0]))
+    data = np.random.randint(low=0, high=1000, size=(10, 10))
+    df = pd.DataFrame(data, columns=[f"col{i+1}" for i in range(10)])
+    return df
+
+# Define a function to set the color of a cell based on its value
+def set_color(value):
+    if value < 300:
+        color = "green"
+    elif value < 700:
+        color = "yellow"
+    else:
+        color = "red"
+    return f"background-color: {color}"
+
 # Define the main function that displays the login page and the editable dataframe
 def main():
     # Display the login page
@@ -24,27 +41,21 @@ def main():
     if st.button("Login"):
         if authenticate(username, password):
             st.success("Login successful!")
-            # Define a dataframe with random numbers unique to each user
-            np.random.seed(ord(username[0]))
-            data = np.random.randint(0, 100, size=(5, 5))
-            df = pd.DataFrame(data, columns=["A", "B", "C", "D", "E"])
-            # Define a function to set the cell color based on the value
-            def color_negative_red(val):
-                if val > 1000:
-                    raise ValueError("Value cannot be greater than 1000")
-                elif val < 30:
-                    color = "red"
-                elif val < 70:
-                    color = "orange"
-                else:
-                    color = "green"
-                return f"background-color: {color}"
-            # Display the editable dataframe with cell color based on the value
+            # Generate the dataframe for the user
+            df = generate_dataframe(username)
+            # Display the editable dataframe with colored cells
             st.title("Editable DataFrame")
             st.write("Click on a cell to edit it.")
-            st.experimental_data_editor(df.style.applymap(color_negative_red))
+            st.dataframe(df.style.applymap(set_color))
         else:
             st.error("Invalid username or password.")
+    # Display an error message if an inputted value is greater than 1000
+    if "dataframe" in st.session_state:
+        df = st.session_state.dataframe
+        if st.session_state.edit_key and st.session_state.new_value > 1000:
+            row, col = st.session_state.edit_key
+            df.iloc[row, col] = st.session_state.old_value
+            st.error("Value must be less than or equal to 1000.")
 
 if __name__ == "__main__":
     main()

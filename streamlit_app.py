@@ -33,7 +33,7 @@ def set_color(value):
         color = "red"
     return f"background-color: {color}"
 
-# Define the main function that displays the login page and the editable dataframe using ag-grid
+# Define the main function that displays the login page and the editable dataframe
 def main():
     # Display the login page
     st.title("Login")
@@ -44,31 +44,23 @@ def main():
             st.success("Login successful!")
             # Generate the dataframe for the user
             df = generate_dataframe(username)
-            # Display the editable dataframe with colored cells using ag-grid
+            # Display the editable dataframe with colored cells
             st.title("Editable DataFrame")
-            grid_options = {
-                'editable': True,
-                'enableRangeSelection': True,
-                'enableCellChangeFlash': True,
-            }
-            components.iframe(
-                f"https://cdn.jsdelivr.net/npm/ag-grid-community@25.2.0/dist/ag-grid-community.min.noStyle.js",
-                height=0,
-                width=0,
+            grid_response = components.declare_component(
+            "agGrid", src="https://unpkg.com/ag-grid-community@27.0.0/dist/ag-grid-community.min.js"
             )
-            js = f"""
-            const gridOptions = {grid_options};
-            const data = {df.to_json(orient='records')};
-            new agGrid.Grid(document.querySelector('#myGrid'), gridOptions);
-            const updateData = (data) => {{
-                gridOptions.api.setRowData(data);
-            }};
-            updateData(data);
-            """
-            components.html(f"""<div id="myGrid" style="height: 400px;width:100%;" class="ag-theme-balham"></div>""", 
-                            height=500, 
-                            scrolling=False)
-            components.html(f"""<script>{js}</script>""")
+            data = df.to_dict('records')
+            columns = [{'field': col, 'editable': True} for col in df.columns]
+            params = {
+                'rowData': data,
+                'columnDefs': columns,
+                'enableCellChangeFlash': True,
+                'enableRangeSelection': True,
+                'rowSelection': 'multiple',
+                'getRowNodeId': 'function(data) { return data.id; }'
+            }
+            grid_result = grid_response(**params)
+            st.components.v1.html(grid_result, height=500)
         else:
             st.error("Invalid username or password.")
     # Display an error message if an inputted value is greater than 1000

@@ -78,3 +78,4 @@ def main():
                 ag_grid(grid_options=grid_options, callback=grid_callback, key="ag-grid")
             # Display an error message if an inputted value is greater than 1000
                
+main()

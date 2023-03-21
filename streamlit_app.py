@@ -24,15 +24,14 @@ def generate_dataframe(username):
     return df
 
 # Define a function to set the color of a cell based on its value
-def set_color(params):
-    value = params["value"]
+def set_color(value):
     if value < 300:
         color = "green"
     elif value < 700:
         color = "yellow"
     else:
         color = "red"
-    return {"backgroundColor": color}
+    return f"background-color: {color}"
 
 # Define the main function that displays the login page and the editable dataframe
 def main():
@@ -45,34 +44,37 @@ def main():
             st.success("Login successful!")
             # Generate the dataframe for the user
             df = generate_dataframe(username)
-            # Display the editable dataframe with colored cells
-            st.title("Editable DataFrame")
-            grid_component = components.declare_component(
-                "grid", url="https://cdn.ag-grid.com/ag-grid-enterprise.min.js"
+            # Create the Ag-Grid
+            ag_grid = components.declare_component(
+                "ag_grid",
+                url="https://cdn.jsdelivr.net/npm/@ag-grid-community/all-modules@27.0.1/dist/ag-grid-community.min.js",
+                js_module=True,
             )
-            grid_data = df.to_dict('records')
-            column_defs = [{"field": column, "editable": True, "valueSetter": "(params) => {return params.newValue > 0 && params.newValue <= 1000 ? true : false}"} for column in df.columns]
+            # Define the Ag-Grid options
             grid_options = {
-                "rowData": grid_data,
-                "columnDefs": column_defs,
-                "onCellValueChanged": "function(params){window.agGridComponent.postMessage(params.data);}",
-                "rowSelection": "single",
-                "enableRangeSelection": True,
-                "enableCellChangeFlash": True,
-                "getRowStyle": set_color
+                "columnDefs": [{"field": col} for col in df.columns],
+                "rowData": df.to_dict("records"),
+                "onCellValueChanged": "function(params) {set_edit_key(params.rowIndex, params.colDef.field, params.oldValue, params.newValue)}",
+                "components": {
+                    "numericCellEditor": {
+                        "params": {
+                            "valueParser": "Number(newValue)",
+                            "onKeyDown": "function(event) {if (event.key === 'Enter' && event.target.value > 1000) {set_error_message('Value must be less than or equal to 1000.'); event.preventDefault();}}"
+                        }
+                    }
+                }
             }
-            with st.spinner("Loading Grid..."):
-                grid_response = grid_component(grid_options)
-            st.markdown(grid_response["result"], unsafe_allow_html=True)
-        else:
-            st.error("Invalid username or password.")
-    # Display an error message if an inputted value is greater than 1000
-    if "dataframe" in st.session_state:
-        df = st.session_state.dataframe
-        if st.session_state.edit_key and st.session_state.new_value > 1000:
-            row, col = st.session_state.edit_key
-            df.iloc[row, col] = st.session_state.old_value
-            st.error("Value must be less than or equal to 1000.")
-
-if __name__ == "__main__":
-    main()
+            # Define the Ag-Grid callback functions
+            grid_callback = """
+                function set_edit_key(row, col, old_value, new_value) {
+                    streamlitSession.setSessionState({'edit_key': [row, col], 'old_value': old_value, 'new_value': new_value})
+                }
+                function set_error_message(message) {
+                    streamlitSession.setSessionState({'error_message': message})
+                }
+            """
+            # Display the Ag-Grid
+            with st.spinner("Loading Ag-Grid..."):
+                ag_grid(grid_options=grid_options, callback=grid_callback, key="ag-grid")
+            # Display an error message if an inputted value is greater than 1000
+               
